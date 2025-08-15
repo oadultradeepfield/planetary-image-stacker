@@ -1,5 +1,6 @@
 #include "image_aligner.hpp"
 #include "cropped_image.hpp"
+#include <omp.h>
 #include <opencv2/opencv.hpp>
 #include <vector>
 
@@ -9,9 +10,10 @@ ImageAligner::align_images(std::vector<CroppedImage> &images) {
 
   std::vector<cv::Mat> aligned_images;
 
-  for (auto &image : images) {
-    cv::Mat img = image.get_color();
-    cv::Mat img_gray = image.get_grayscale();
+  #pragma omp parallel for
+  for (int i = 0; i < images.size(); ++i) {
+    cv::Mat img = images[i].get_color();
+    cv::Mat img_gray = images[i].get_grayscale();
 
     // Perform phase correlation to find translation
     cv::Mat result;
@@ -30,6 +32,7 @@ ImageAligner::align_images(std::vector<CroppedImage> &images) {
         (cv::Mat_<double>(2, 3) << 1, 0, translation.x, 0, 1, translation.y);
     cv::warpAffine(img, aligned_img, translation_matrix, img.size());
 
+    #pragma omp critical
     // Store the aligned image
     aligned_images.push_back(aligned_img);
   }
