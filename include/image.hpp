@@ -6,19 +6,19 @@
 
 class Image {
 public:
+  cv::Mat get_color() const { return color; }
+  cv::Mat get_grayscale() const { return grayscale; }
+  cv::Mat get_binary() const { return binary; }
+
+protected:
+  explicit Image(const std::string &filename);
+
+  void generate_grayscale();
+  void generate_binary();
+
   cv::Mat color;
   cv::Mat grayscale;
   cv::Mat binary;
-
-  explicit Image(const std::string &filename);
-  float get_quality_score();
-
-private:
-  void generate_grayscale();
-  void generate_binary();
-  float get_contrast();
-  float get_sharpness();
-  float get_snr(); // signal-to-noise ratio
 };
 
 #endif

@@ -17,48 +17,24 @@ Image::Image(const std::string &filename) {
 }
 
 void Image::generate_grayscale() {
-  cv::cvtColor(color, grayscale, cv::COLOR_BGR2GRAY);
+  if (grayscale.empty()) {
+    cv::cvtColor(color, grayscale, cv::COLOR_BGR2GRAY);
+  }
 }
 
 void Image::generate_binary() {
+  // Generate grayscale if not already done
+  generate_grayscale();
+
   // Apply adaptive thresholding to convert grayscale to binary
-  cv::Mat thresh;
-  cv::adaptiveThreshold(grayscale, thresh, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C,
-                        cv::THRESH_BINARY, 11, 2);
+  if (binary.empty()) {
+    cv::Mat thresh;
+    cv::adaptiveThreshold(grayscale, thresh, 255,
+                          cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 11,
+                          2);
 
-  // Apply morphological dilation to enhance the binary
-  cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-  cv::dilate(thresh, binary, kernel, cv::Point(-1, -1), 2);
-}
-
-// get the quality of the image based on contrast, sharpness, and SNR
-float Image::get_quality_score() {
-  float contrast = get_contrast();
-  float sharpness = get_sharpness();
-  float snr = get_snr();
-  return (0.2f * contrast + 0.5f * sharpness + 0.3f * snr);
-}
-
-// get contrast using standard deviation of pixel intensities
-float Image::get_contrast() {
-  cv::Scalar mean, stddev;
-  cv::meanStdDev(grayscale, mean, stddev);
-  return stddev[0];
-}
-
-// get sharpness using the Laplacian variance
-float Image::get_sharpness() {
-  cv::Mat laplacian;
-  cv::Laplacian(grayscale, laplacian, CV_64F);
-  cv::Scalar mean, stddev;
-  cv::meanStdDev(laplacian, mean, stddev);
-  return stddev[0];
-}
-
-// get signal-to-noise ratio (SNR)
-float Image::get_snr() {
-  cv::Scalar mean, stddev;
-  cv::meanStdDev(grayscale, mean, stddev);
-  return mean[0] /
-         (stddev[0] + 1e-8f); // small epsilon to avoid division by zero
+    // Apply morphological dilation to enhance the binary
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    cv::dilate(thresh, binary, kernel, cv::Point(-1, -1), 2);
+  }
 }

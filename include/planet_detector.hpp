@@ -1,6 +1,7 @@
 #ifndef PLANET_DETECTOR_HPP
 #define PLANET_DETECTOR_HPP
 
+#include "cropped_image.hpp"
 #include "image.hpp"
 #include <opencv2/opencv.hpp>
 
@@ -11,7 +12,7 @@ struct Centroid {
 
 class PlanetDetector {
 public:
-  static cv::Mat crop(const Image &image, int crop_size);
+  static CroppedImage crop(const Image &image, int crop_size);
 
 private:
   // Private constructor to prevent instantiation
