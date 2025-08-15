@@ -1,5 +1,6 @@
 #include "../include/planet_detector.hpp"
 #include "cropped_image.hpp"
+#include <opencv2/opencv.hpp>
 
 CroppedImage PlanetDetector::crop(const Image &image, int crop_size) {
   // Detect centroid first

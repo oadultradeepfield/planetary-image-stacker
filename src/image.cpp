@@ -1,7 +1,7 @@
 #include "../include/image.hpp"
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 #include <stdexcept>
+#include <string>
 
 Image::Image(const std::string &filename) {
   // Load the color image
