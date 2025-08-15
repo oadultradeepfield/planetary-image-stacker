@@ -6,9 +6,9 @@
 
 class Image {
 public:
-  cv::Mat get_color() const { return color; }
-  cv::Mat get_grayscale() const { return grayscale; }
-  cv::Mat get_binary() const { return binary; }
+  cv::Mat get_color() const;
+  cv::Mat get_grayscale() const;
+  cv::Mat get_binary() const;
 
   explicit Image(const std::string &filename);
 

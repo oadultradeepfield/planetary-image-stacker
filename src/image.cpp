@@ -16,6 +16,10 @@ Image::Image(const std::string &filename) {
   generate_binary();
 }
 
+cv::Mat Image::get_color() const { return color; }
+cv::Mat Image::get_grayscale() const { return grayscale; }
+cv::Mat Image::get_binary() const { return binary; }
+
 void Image::generate_grayscale() {
   if (grayscale.empty()) {
     cv::cvtColor(color, grayscale, cv::COLOR_BGR2GRAY);
