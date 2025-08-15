@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <vector>
 
+float ImageStacker::sigma_threshold = 2.0f;
+
 cv::Mat ImageStacker::stack_images(const std::vector<cv::Mat> &images) {
   if (images.empty()) {
     throw std::invalid_argument("No images provided for stacking.");
@@ -17,19 +19,9 @@ cv::Mat ImageStacker::stack_images(const std::vector<cv::Mat> &images) {
   const int channels = images[0].channels();
   const size_t num_images = images.size();
 
-  // Convert all to float (same number of channels)
-  std::vector<cv::Mat> float_images;
-  float_images.reserve(num_images);
-  for (size_t i = 0; i < num_images; ++i) {
-    cv::Mat tmp;
-    images[i].convertTo(tmp, CV_32F); // preserves channels
-    float_images.push_back(std::move(tmp));
-  }
-
   // Result as float with same channel count
+  std::vector<cv::Mat> float_images = convert_to_float(images);
   cv::Mat result(img_size, CV_MAKETYPE(CV_32F, channels), cv::Scalar::all(0));
-
-  const float sigma_threshold = 2.0f;
 
   // Parallelize over pixels;
   // collapse(2) gives independent iterations per (y,x).
@@ -46,53 +38,27 @@ cv::Mat ImageStacker::stack_images(const std::vector<cv::Mat> &images) {
 
       // For each channel independently
       for (int ch = 0; ch < channels; ++ch) {
-        double sum = 0.0;
-        double square_sum = 0.0;
-        for (size_t k = 0; k < num_images; ++k) {
-          float v = row_ptrs[k][x * channels + ch];
-          sum += v;
-          square_sum += static_cast<double>(v) * v;
-        }
+        double sum;
+        double square_sum;
+        compute_sum_and_square(row_ptrs, x, ch, channels, num_images, sum,
+                               square_sum);
 
         const double n = static_cast<double>(num_images);
         const double mean = sum / n;
 
-        double var = (square_sum / n) - (mean * mean);
-        if (var < 0.0 && var > -1e-12)
-          var = 0.0; // numerical safety
+        double var;
+        compute_variance(square_sum, n, mean, var);
         const double stddev = std::sqrt(std::max(0.0, var));
 
-        double clipped_sum = 0.0;
-        int clipped_count = 0;
-        const double threshold = sigma_threshold * stddev;
-        if (stddev == 0.0) {
-          // if stddev == 0, all values are identical -> take mean
-          clipped_sum = sum;
-          clipped_count = static_cast<int>(num_images);
-        } else {
-          for (size_t k = 0; k < num_images; ++k) {
-            float v = row_ptrs[k][x * channels + ch];
-            if (std::fabs(v - mean) <= threshold) {
-              clipped_sum += v;
-              ++clipped_count;
-            }
-          }
-        }
+        double clipped_sum;
+        int clipped_count;
+        compute_clipped_sum(row_ptrs, x, ch, channels, num_images, mean,
+                            sigma_threshold * stddev, clipped_sum,
+                            clipped_count);
 
-        float out_val = 0.0f;
-        if (clipped_count > 0) {
-          out_val = static_cast<float>(clipped_sum / clipped_count);
-        } else {
-          // fallback: compute median
-          std::vector<float> vals;
-          vals.reserve(num_images);
-          for (size_t k = 0; k < num_images; ++k) {
-            vals.push_back(row_ptrs[k][x * channels + ch]);
-          }
-          std::nth_element(vals.begin(), vals.begin() + vals.size() / 2,
-                           vals.end());
-          out_val = vals[vals.size() / 2];
-        }
+        float out_val;
+        compute_out_value(row_ptrs, x, ch, num_images, channels, clipped_sum,
+                          clipped_count, out_val);
 
         // write into result (interleaved channels)
         result.ptr<float>(y)[x * channels + ch] = out_val;
@@ -104,4 +70,72 @@ cv::Mat ImageStacker::stack_images(const std::vector<cv::Mat> &images) {
   cv::Mat finalResult;
   result.convertTo(finalResult, img_type);
   return finalResult;
+}
+
+std::vector<cv::Mat>
+ImageStacker::convert_to_float(const std::vector<cv::Mat> &images) {
+  const size_t num_images = images.size();
+
+  std::vector<cv::Mat> float_images;
+  float_images.reserve(num_images);
+  for (size_t i = 0; i < num_images; ++i) {
+    cv::Mat tmp;
+    images[i].convertTo(tmp, CV_32F); // preserves channels
+    float_images.push_back(std::move(tmp));
+  }
+
+  return float_images;
+}
+
+// Helper functions for computing statistics
+void ImageStacker::compute_sum_and_square(
+    const std::vector<const float *> &row_ptrs, int x, int ch, int channels,
+    size_t num_images, double &sum, double &square_sum) {
+  sum = 0.0;
+  square_sum = 0.0;
+  for (size_t k = 0; k < num_images; ++k) {
+    float v = row_ptrs[k][x * channels + ch];
+    sum += v;
+    square_sum += static_cast<double>(v) * v;
+  }
+}
+
+void ImageStacker::compute_variance(double square_sum, double n, double mean,
+                                    double &variance) {
+  variance = (square_sum / n) - (mean * mean);
+  if (variance < 0.0 && variance > -1e-12)
+    variance = 0.0; // numerical safety
+}
+
+void ImageStacker::compute_clipped_sum(
+    const std::vector<const float *> &row_ptrs, int x, int ch, int channels,
+    size_t num_images, double mean, double threshold, double &clipped_sum,
+    int &clipped_count) {
+  clipped_sum = 0.0;
+  clipped_count = 0;
+  for (size_t k = 0; k < num_images; ++k) {
+    float v = row_ptrs[k][x * channels + ch];
+    if (std::fabs(v - mean) <= threshold) {
+      clipped_sum += v;
+      ++clipped_count;
+    }
+  }
+}
+
+void ImageStacker::compute_out_value(const std::vector<const float *> &row_ptrs,
+                                     int x, int ch, size_t num_images,
+                                     int channels, double clipped_sum,
+                                     int clipped_count, float &out_val) {
+  out_val = 0.0f;
+  if (clipped_count > 0) {
+    out_val = static_cast<float>(clipped_sum / clipped_count);
+  } else {
+    std::vector<float> vals;
+    vals.reserve(num_images);
+    for (size_t k = 0; k < num_images; ++k) {
+      vals.push_back(row_ptrs[k][x * channels + ch]);
+    }
+    std::nth_element(vals.begin(), vals.begin() + vals.size() / 2, vals.end());
+    out_val = vals[vals.size() / 2];
+  }
 }
