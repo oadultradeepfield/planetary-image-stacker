@@ -1,14 +1,13 @@
 #include "image_aligner.hpp"
-#include "aligned_image.hpp"
 #include "cropped_image.hpp"
 #include <opencv2/opencv.hpp>
 #include <vector>
 
-std::vector<AlignedImage>
+std::vector<cv::Mat>
 ImageAligner::align_images(std::vector<CroppedImage> &images) {
   cv::Mat template_gray = select_template(images).get_grayscale();
 
-  std::vector<AlignedImage> aligned_images;
+  std::vector<cv::Mat> aligned_images;
 
   for (auto &image : images) {
     cv::Mat img = image.get_color();
@@ -32,7 +31,7 @@ ImageAligner::align_images(std::vector<CroppedImage> &images) {
     cv::warpAffine(img, aligned_img, translation_matrix, img.size());
 
     // Store the aligned image
-    aligned_images.push_back(AlignedImage(aligned_img));
+    aligned_images.push_back(aligned_img);
   }
 
   return aligned_images;
