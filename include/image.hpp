@@ -11,10 +11,14 @@ public:
   cv::Mat binary;
 
   explicit Image(const std::string &filename);
+  float get_quality_score();
 
 private:
   void generate_grayscale();
   void generate_binary();
+  float get_contrast();
+  float get_sharpness();
+  float get_snr(); // signal-to-noise ratio
 };
 
 #endif
