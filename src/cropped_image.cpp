@@ -2,7 +2,7 @@
 
 CroppedImage::CroppedImage(const cv::Mat &color_img,
                            const cv::Mat &grayscale_img)
-    : Image("") {
+    : Image() {
   color = color_img;
   grayscale = grayscale_img;
 }

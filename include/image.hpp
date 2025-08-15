@@ -10,8 +10,10 @@ public:
   cv::Mat get_grayscale() const { return grayscale; }
   cv::Mat get_binary() const { return binary; }
 
-protected:
   explicit Image(const std::string &filename);
+
+protected:
+  Image() = default;
 
   void generate_grayscale();
   void generate_binary();
