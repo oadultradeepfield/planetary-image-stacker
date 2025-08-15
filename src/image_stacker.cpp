@@ -88,6 +88,9 @@ ImageStacker::convert_to_float(const std::vector<cv::Mat> &images) {
 }
 
 // Helper functions for computing statistics
+
+// Computes the sum and sum of squares for a given pixel/channel across all
+// images
 void ImageStacker::compute_sum_and_square(
     const std::vector<const float *> &row_ptrs, int x, int ch, int channels,
     size_t num_images, double &sum, double &square_sum) {
@@ -100,6 +103,7 @@ void ImageStacker::compute_sum_and_square(
   }
 }
 
+// Computes variance given sum of squares, count, and mean
 void ImageStacker::compute_variance(double square_sum, double n, double mean,
                                     double &variance) {
   variance = (square_sum / n) - (mean * mean);
@@ -107,6 +111,7 @@ void ImageStacker::compute_variance(double square_sum, double n, double mean,
     variance = 0.0; // numerical safety
 }
 
+// Computes the sum and count of values within a threshold of the mean
 void ImageStacker::compute_clipped_sum(
     const std::vector<const float *> &row_ptrs, int x, int ch, int channels,
     size_t num_images, double mean, double threshold, double &clipped_sum,
@@ -122,6 +127,8 @@ void ImageStacker::compute_clipped_sum(
   }
 }
 
+// Computes the output value for a pixel/channel, using mean if clipped values
+// exist, otherwise median
 void ImageStacker::compute_out_value(const std::vector<const float *> &row_ptrs,
                                      int x, int ch, size_t num_images,
                                      int channels, double clipped_sum,
