@@ -2,7 +2,7 @@
 #define CROPPED_IMAGE_HPP
 
 #include "image.hpp"
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/mat.hpp>
 
 class CroppedImage : public Image {
 public:

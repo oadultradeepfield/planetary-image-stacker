@@ -1,7 +1,8 @@
 #include "image_aligner.hpp"
 #include "cropped_image.hpp"
 #include <omp.h>
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/imgproc.hpp>
 #include <vector>
 
 std::vector<cv::Mat>

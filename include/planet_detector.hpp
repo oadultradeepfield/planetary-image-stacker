@@ -3,7 +3,6 @@
 
 #include "cropped_image.hpp"
 #include "image.hpp"
-#include <opencv2/opencv.hpp>
 
 struct Centroid {
   int x;

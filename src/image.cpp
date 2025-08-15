@@ -1,5 +1,7 @@
-#include "../include/image.hpp"
-#include <opencv2/opencv.hpp>
+#include "image.hpp"
+#include <opencv2/core/mat.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <stdexcept>
 #include <string>
 

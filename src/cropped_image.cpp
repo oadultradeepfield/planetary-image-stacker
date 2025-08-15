@@ -1,5 +1,6 @@
 #include "cropped_image.hpp"
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/imgproc.hpp>
 
 // Static member initialization
 float CroppedImage::contrast_weight = 0.2f;

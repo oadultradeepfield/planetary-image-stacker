@@ -1,7 +1,7 @@
 #ifndef IMAGE_HPP
 #define IMAGE_HPP
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/mat.hpp>
 #include <string>
 
 class Image {

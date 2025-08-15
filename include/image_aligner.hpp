@@ -2,8 +2,7 @@
 #define IMAGE_ALIGNER_HPP
 
 #include "cropped_image.hpp"
-#include <opencv2/core.hpp>
-#include <opencv2/opencv.hpp>
+#include <opencv2/core/mat.hpp>
 #include <vector>
 
 class ImageAligner {
