@@ -32,9 +32,9 @@ CroppedImage PlanetDetector::crop(const Image &image, int crop_size) {
 
   // Calculate the padding needed to make it pretty square
   int top = std::max(0, half_crop - centroid.y);
-  int bottom = std::max(0, (h - centroid.y) - half_crop);
+  int bottom = std::max(0, centroid.y + half_crop - h);
   int left = std::max(0, half_crop - centroid.x);
-  int right = std::max(0, (w - centroid.x) - half_crop);
+  int right = std::max(0, centroid.x + half_crop - w);
 
   // Add black padding to both images cv::Mat padded_color, padded_gray;
   cv::Mat padded_color, padded_gray;
