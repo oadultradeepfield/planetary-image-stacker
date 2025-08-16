@@ -21,7 +21,7 @@ std::vector<CroppedImage> VideoProcessor::processVideo(std::string video_path,
   // Step 1: Read frames sequentially
   while (cap.read(frame)) {
     if (frame_count % frame_skip == 0) {
-      frames.push_back(frame);
+      frames.push_back(frame.clone());
     }
     frame_count++;
   }
