@@ -42,11 +42,10 @@ void Image::generate_binary() {
   if (binary.empty()) {
     cv::Mat thresh;
     cv::adaptiveThreshold(grayscale, thresh, 255,
-                          cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 11,
-                          2);
+                          cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV,
+                          11, 2);
 
-    // Apply morphological dilation to enhance the binary
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-    cv::dilate(thresh, binary, kernel, cv::Point(-1, -1), 2);
+    cv::dilate(thresh, binary, kernel, cv::Point(-1, -1), 1);
   }
 }
