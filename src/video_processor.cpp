@@ -27,7 +27,8 @@ std::vector<CroppedImage> VideoProcessor::processVideo(std::string video_path,
   }
 
   // Step 2: Parallel cropping
-  std::vector<CroppedImage> cropped_images(frames.size());
+  std::vector<CroppedImage> cropped_images;
+  cropped_images.reserve(frames.size());
 
   #pragma omp parallel for
   for (int i = 0; i < static_cast<int>(frames.size()); i++) {

@@ -69,7 +69,7 @@ bool process_image_set(const std::string &input_dir,
   return true;
 }
 
-int test() {
+int main() {
   const std::vector<std::pair<std::string, std::string>> test_cases = {
       {"../test/input/jupiter_sample_frames/",
        "../test/output/jupiter_output.png"},
