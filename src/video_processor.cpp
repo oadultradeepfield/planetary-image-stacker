@@ -33,7 +33,11 @@ std::vector<CroppedImage> VideoProcessor::processVideo(std::string video_path,
   #pragma omp parallel for
   for (int i = 0; i < static_cast<int>(frames.size()); i++) {
     Image image(frames[i]);
-    cropped_images[i] = PlanetDetector::crop(image, crop_size);
+    CroppedImage cropped = PlanetDetector::crop(image, crop_size);
+    #pragma omp critical
+    {
+      cropped_images.push_back(cropped);
+    }
   }
 
   return cropped_images;
