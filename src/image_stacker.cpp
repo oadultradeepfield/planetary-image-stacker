@@ -7,142 +7,179 @@
 #include <stdexcept>
 #include <vector>
 
-float ImageStacker::sigma_threshold = 2.0f;
+float ImageStacker::sigma_threshold = 3.0f;
 
 cv::Mat ImageStacker::stack_images(const std::vector<cv::Mat> &images) {
   if (images.empty()) {
     throw std::invalid_argument("No images provided for stacking.");
   }
 
+  // Validate all images have same dimensions and type
   const cv::Size img_size = images[0].size();
   const int img_type = images[0].type();
   const int channels = images[0].channels();
   const size_t num_images = images.size();
 
-  // Result as float with same channel count
+  for (size_t i = 1; i < num_images; ++i) {
+    if (images[i].size() != img_size || images[i].type() != img_type) {
+      throw std::invalid_argument(
+          "All images must have same dimensions and type.");
+    }
+  }
+
+  // Convert all images to float for processing
   std::vector<cv::Mat> float_images = convert_to_float(images);
-  cv::Mat result(img_size, CV_MAKETYPE(CV_32F, channels), cv::Scalar::all(0));
 
-  // Parallelize over pixels;
-  // collapse(2) gives independent iterations per (y,x).
-  // Use schedule(static) to avoid runtime overhead of dynamic chunking.
-  #pragma omp parallel for collapse(2) schedule(static)
-  for (int y = 0; y < img_size.height; ++y) {
-    for (int x = 0; x < img_size.width; ++x) {
+  // Pre-compute mean and standard deviation images
+  cv::Mat mean_img, std_img;
+  compute_mean_and_std(float_images, mean_img, std_img);
 
-      std::vector<const float *> row_ptrs;
-      row_ptrs.resize(num_images);
-      for (size_t k = 0; k < num_images; ++k) {
-        row_ptrs[k] = float_images[k].ptr<float>(y);
-      }
+  // Compute median image
+  cv::Mat median_img = compute_median(float_images);
 
-      // For each channel independently
-      for (int ch = 0; ch < channels; ++ch) {
-        double sum;
-        double square_sum;
-        compute_sum_and_square(row_ptrs, x, ch, channels, num_images, sum,
-                               square_sum);
-
-        const double n = static_cast<double>(num_images);
-        const double mean = sum / n;
-
-        double var;
-        compute_variance(square_sum, n, mean, var);
-        const double stddev = std::sqrt(std::max(0.0, var));
-
-        double clipped_sum;
-        int clipped_count;
-        compute_clipped_sum(row_ptrs, x, ch, channels, num_images, mean,
-                            sigma_threshold * stddev, clipped_sum,
-                            clipped_count);
-
-        float out_val;
-        compute_out_value(row_ptrs, x, ch, num_images, channels, clipped_sum,
-                          clipped_count, out_val);
-
-        // write into result (interleaved channels)
-        result.ptr<float>(y)[x * channels + ch] = out_val;
-      } // channel loop
-    } // x
-  } // y
+  // Apply sigma clipping and compute final mean
+  cv::Mat result = apply_sigma_clipping_and_mean(float_images, mean_img,
+                                                 std_img, median_img);
 
   // Convert result back to original type
-  cv::Mat finalResult;
-  result.convertTo(finalResult, img_type);
-  return finalResult;
+  cv::Mat final_result;
+  result.convertTo(final_result, img_type);
+  return final_result;
 }
 
 std::vector<cv::Mat>
 ImageStacker::convert_to_float(const std::vector<cv::Mat> &images) {
-  const size_t num_images = images.size();
-
   std::vector<cv::Mat> float_images;
-  float_images.reserve(num_images);
-  for (size_t i = 0; i < num_images; ++i) {
-    cv::Mat tmp;
-    images[i].convertTo(tmp, CV_32F); // preserves channels
-    float_images.push_back(std::move(tmp));
+  float_images.reserve(images.size());
+
+  for (const auto &img : images) {
+    cv::Mat float_img;
+    img.convertTo(float_img, CV_32F);
+    float_images.push_back(std::move(float_img));
   }
 
   return float_images;
 }
 
-// Helper functions for computing statistics
+void ImageStacker::compute_mean_and_std(
+    const std::vector<cv::Mat> &float_images, cv::Mat &mean_img,
+    cv::Mat &std_img) {
+  if (float_images.empty())
+    return;
 
-// Computes the sum and sum of squares for a given pixel/channel across all
-// images
-void ImageStacker::compute_sum_and_square(
-    const std::vector<const float *> &row_ptrs, int x, int ch, int channels,
-    size_t num_images, double &sum, double &square_sum) {
-  sum = 0.0;
-  square_sum = 0.0;
-  for (size_t k = 0; k < num_images; ++k) {
-    float v = row_ptrs[k][x * channels + ch];
-    sum += v;
-    square_sum += static_cast<double>(v) * v;
+  const cv::Size img_size = float_images[0].size();
+  const int channels = float_images[0].channels();
+  const size_t num_images = float_images.size();
+
+  // Initialize accumulator matrices
+  mean_img = cv::Mat::zeros(img_size, CV_MAKETYPE(CV_32F, channels));
+  cv::Mat sum_sq = cv::Mat::zeros(img_size, CV_MAKETYPE(CV_32F, channels));
+
+  // Accumulate sum and sum of squares
+  for (const auto &img : float_images) {
+    mean_img += img;
+    cv::Mat img_sq;
+    cv::multiply(img, img, img_sq);
+    sum_sq += img_sq;
   }
+
+  // Compute mean
+  mean_img /= static_cast<float>(num_images);
+
+  // Compute variance
+  cv::Mat mean_sq;
+  cv::multiply(mean_img, mean_img, mean_sq);
+  cv::Mat variance = sum_sq / static_cast<float>(num_images) - mean_sq;
+
+  // Compute standard deviation
+  cv::sqrt(variance, std_img);
 }
 
-// Computes variance given sum of squares, count, and mean
-void ImageStacker::compute_variance(double square_sum, double n, double mean,
-                                    double &variance) {
-  variance = (square_sum / n) - (mean * mean);
-  if (variance < 0.0 && variance > -1e-12)
-    variance = 0.0; // numerical safety
-}
+cv::Mat ImageStacker::compute_median(const std::vector<cv::Mat> &float_images) {
+  if (float_images.empty())
+    return cv::Mat();
 
-// Computes the sum and count of values within a threshold of the mean
-void ImageStacker::compute_clipped_sum(
-    const std::vector<const float *> &row_ptrs, int x, int ch, int channels,
-    size_t num_images, double mean, double threshold, double &clipped_sum,
-    int &clipped_count) {
-  clipped_sum = 0.0;
-  clipped_count = 0;
-  for (size_t k = 0; k < num_images; ++k) {
-    float v = row_ptrs[k][x * channels + ch];
-    if (std::fabs(v - mean) <= threshold) {
-      clipped_sum += v;
-      ++clipped_count;
+  const cv::Size img_size = float_images[0].size();
+  const int channels = float_images[0].channels();
+  const size_t num_images = float_images.size();
+
+  cv::Mat median_img(img_size, CV_MAKETYPE(CV_32F, channels));
+
+  // Parallelize over pixels
+  #pragma omp parallel for collapse(2) schedule(static)
+  for (int y = 0; y < img_size.height; ++y) {
+    for (int x = 0; x < img_size.width; ++x) {
+      for (int ch = 0; ch < channels; ++ch) {
+        // Collect values for this pixel/channel
+        std::vector<float> values;
+        values.reserve(num_images);
+
+        for (size_t i = 0; i < num_images; ++i) {
+          values.push_back(float_images[i].ptr<float>(y)[x * channels + ch]);
+        }
+
+        // Find median using nth_element
+        size_t mid = values.size() / 2;
+        std::nth_element(values.begin(), values.begin() + mid, values.end());
+        float median_val = values[mid];
+
+        // For even number of elements, average the two middle values
+        if (values.size() % 2 == 0 && values.size() > 1) {
+          auto max_it = std::max_element(values.begin(), values.begin() + mid);
+          median_val = (median_val + *max_it) * 0.5f;
+        }
+
+        median_img.ptr<float>(y)[x * channels + ch] = median_val;
+      }
     }
   }
+
+  return median_img;
 }
 
-// Computes the output value for a pixel/channel, using mean if clipped values
-// exist, otherwise median
-void ImageStacker::compute_out_value(const std::vector<const float *> &row_ptrs,
-                                     int x, int ch, size_t num_images,
-                                     int channels, double clipped_sum,
-                                     int clipped_count, float &out_val) {
-  out_val = 0.0f;
-  if (clipped_count > 0) {
-    out_val = static_cast<float>(clipped_sum / clipped_count);
-  } else {
-    std::vector<float> vals;
-    vals.reserve(num_images);
-    for (size_t k = 0; k < num_images; ++k) {
-      vals.push_back(row_ptrs[k][x * channels + ch]);
+cv::Mat ImageStacker::apply_sigma_clipping_and_mean(
+    const std::vector<cv::Mat> &float_images, const cv::Mat &mean_img,
+    const cv::Mat &std_img, const cv::Mat &median_img) {
+  if (float_images.empty())
+    return cv::Mat();
+
+  const cv::Size img_size = float_images[0].size();
+  const int channels = float_images[0].channels();
+  const size_t num_images = float_images.size();
+
+  cv::Mat result = cv::Mat::zeros(img_size, CV_MAKETYPE(CV_32F, channels));
+
+  // Parallelize over pixels
+  #pragma omp parallel for collapse(2) schedule(static)
+  for (int y = 0; y < img_size.height; ++y) {
+    for (int x = 0; x < img_size.width; ++x) {
+      for (int ch = 0; ch < channels; ++ch) {
+        const int pixel_idx = x * channels + ch;
+        const float mean_val = mean_img.ptr<float>(y)[pixel_idx];
+        const float std_val = std_img.ptr<float>(y)[pixel_idx];
+        const float median_val = median_img.ptr<float>(y)[pixel_idx];
+        const float threshold = sigma_threshold * std_val;
+
+        double sum = 0.0;
+        int count = 0;
+
+        // Apply sigma clipping: replace outliers with median, then compute mean
+        for (size_t i = 0; i < num_images; ++i) {
+          float pixel_val = float_images[i].ptr<float>(y)[pixel_idx];
+
+          // Check if pixel is within sigma threshold
+          if (std::abs(pixel_val - mean_val) > threshold) {
+            pixel_val = median_val;
+          }
+
+          sum += pixel_val;
+          ++count;
+        }
+
+        result.ptr<float>(y)[pixel_idx] = static_cast<float>(sum / count);
+      }
     }
-    std::nth_element(vals.begin(), vals.begin() + vals.size() / 2, vals.end());
-    out_val = vals[vals.size() / 2];
   }
+
+  return result;
 }
