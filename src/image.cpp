@@ -18,6 +18,12 @@ Image::Image(const std::string &filename) {
   generate_binary();
 }
 
+Image::Image(const cv::Mat &img) {
+  color = img;
+  generate_grayscale();
+  generate_binary();
+}
+
 cv::Mat Image::get_color() const { return color; }
 cv::Mat Image::get_grayscale() const { return grayscale; }
 cv::Mat Image::get_binary() const { return binary; }

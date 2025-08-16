@@ -11,6 +11,7 @@ public:
   cv::Mat get_binary() const;
 
   explicit Image(const std::string &filename);
+  explicit Image(const cv::Mat &img);
 
 protected:
   Image() = default;
