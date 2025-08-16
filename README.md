@@ -43,7 +43,7 @@ vcpkg install opencv
 ### Processing Videos
 
 ```bash
-./planetary_image_stacker <video_path> <crop_size> [frame_skip]
+./build/planetary_image_stacker <video_path> <crop_size> [frame_skip]
 ```
 
 **Parameters:**
@@ -55,7 +55,7 @@ vcpkg install opencv
 **Example:**
 
 ```bash
-./planetary_image_stacker jupiter_video.avi 480 2
+./build/planetary_image_stacker jupiter_video.avi 480 2
 ```
 
 ### Running Tests
@@ -63,7 +63,7 @@ vcpkg install opencv
 Process sample images and verify everything works:
 
 ```bash
-./test-planetary_image_stacker
+./build/test-planetary_image_stacker
 ```
 
 This processes test images in `test/input/` and saves stacked results to `test/output/`.
