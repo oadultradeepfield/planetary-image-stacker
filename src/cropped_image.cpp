@@ -9,28 +9,28 @@ float CroppedImage::snr_weight = 0.3f;
 
 CroppedImage::CroppedImage(const cv::Mat &color_img,
                            const cv::Mat &grayscale_img)
-    : Image() {
+  : Image() {
   color = color_img;
   grayscale = grayscale_img;
   quality_score = contrast_weight * get_contrast() +
                   sharpness_weight * get_sharpness() + snr_weight * get_snr();
 }
 
-float CroppedImage::get_quality_score() { return quality_score; }
+double CroppedImage::get_quality_score() const { return quality_score; }
 
 bool CroppedImage::operator<(const CroppedImage &other) const {
   return quality_score < other.quality_score;
 }
 
 // get contrast using standard deviation of pixel intensities
-float CroppedImage::get_contrast() {
+double CroppedImage::get_contrast() const {
   cv::Scalar mean, stddev;
   cv::meanStdDev(grayscale, mean, stddev);
   return stddev[0];
 }
 
 // get sharpness using the Laplacian variance
-float CroppedImage::get_sharpness() {
+double CroppedImage::get_sharpness() const {
   cv::Mat laplacian;
   cv::Laplacian(grayscale, laplacian, CV_64F);
   cv::Scalar mean, stddev;
@@ -39,7 +39,7 @@ float CroppedImage::get_sharpness() {
 }
 
 // get signal-to-noise ratio (SNR)
-float CroppedImage::get_snr() {
+double CroppedImage::get_snr() const {
   cv::Scalar mean, stddev;
   cv::meanStdDev(grayscale, mean, stddev);
   return mean[0] /

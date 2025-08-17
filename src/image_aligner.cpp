@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <omp.h>
 #include <opencv2/core/mat.hpp>
-#include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
 #include <vector>
 
@@ -18,7 +17,7 @@ ImageAligner::align_images(std::vector<CroppedImage> &images) {
   std::vector<cv::Mat> aligned_images;
   aligned_images.resize(images.size());
 
-  #pragma omp parallel for
+#pragma omp parallel for default(none) shared(images, aligned_images, template_gray)
   for (int i = 0; i < images.size(); ++i) {
     cv::Mat img = images[i].get_color();
     cv::Mat img_gray = images[i].get_grayscale();
@@ -32,7 +31,7 @@ ImageAligner::align_images(std::vector<CroppedImage> &images) {
         (cv::Mat_<double>(2, 3) << 1, 0, shift.x, 0, 1, shift.y);
     cv::warpAffine(img, aligned_img, translation_matrix, img.size());
 
-    #pragma omp critical
+#pragma omp critical
     {
       aligned_images[i] = aligned_img;
     }
@@ -44,7 +43,7 @@ ImageAligner::align_images(std::vector<CroppedImage> &images) {
 cv::Point2d ImageAligner::compute_phase_correlation(const cv::Mat &img1,
                                                     const cv::Mat &img2) {
   // Ensure images are the same size
-  cv::Size common_size =
+  const auto common_size =
       cv::Size(std::min(img1.cols, img2.cols), std::min(img1.rows, img2.rows));
 
   cv::Mat src1, src2;
@@ -69,6 +68,6 @@ cv::Point2d ImageAligner::compute_phase_correlation(const cv::Mat &img1,
 
 CroppedImage
 ImageAligner::select_template(const std::vector<CroppedImage> &images) {
-  auto max_it = std::max_element(images.begin(), images.end());
+  const auto max_it = std::max_element(images.begin(), images.end());
   return *max_it;
 }

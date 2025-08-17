@@ -7,12 +7,12 @@
 
 class VideoProcessor {
 public:
-  static std::vector<CroppedImage>
-  processVideo(std::string video_path, int crop_size, int frame_skip = 1);
+    static std::vector<CroppedImage>
+    processVideo(const std::string &video_path, int crop_size, int frame_skip = 1);
 
 private:
-  // Private constructor to prevent instantiation
-  VideoProcessor() = default;
+    // Private constructor to prevent instantiation
+    VideoProcessor() = default;
 };
 
 #endif

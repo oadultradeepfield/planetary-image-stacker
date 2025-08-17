@@ -1,12 +1,11 @@
 #include "video_processor.hpp"
 #include "cropped_image.hpp"
 #include "planet_detector.hpp"
-#include <omp.h>
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <vector>
 
-std::vector<CroppedImage> VideoProcessor::processVideo(std::string video_path,
+std::vector<CroppedImage> VideoProcessor::processVideo(const std::string &video_path,
                                                        int crop_size,
                                                        int frame_skip) {
   cv::VideoCapture cap(video_path);
@@ -30,11 +29,11 @@ std::vector<CroppedImage> VideoProcessor::processVideo(std::string video_path,
   std::vector<CroppedImage> cropped_images;
   cropped_images.reserve(frames.size());
 
-  #pragma omp parallel for
-  for (int i = 0; i < static_cast<int>(frames.size()); i++) {
-    Image image(frames[i]);
+#pragma omp parallel for default(none) shared(frames, crop_size, cropped_images)
+  for (const auto &f: frames) {
+    Image image(f);
     CroppedImage cropped = PlanetDetector::crop(image, crop_size);
-    #pragma omp critical
+#pragma omp critical
     {
       cropped_images.push_back(cropped);
     }

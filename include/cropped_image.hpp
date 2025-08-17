@@ -12,15 +12,18 @@ public:
 
   CroppedImage(const cv::Mat &color_img, const cv::Mat &grayscale_img);
 
-  float get_quality_score();
+  [[nodiscard]] double get_quality_score() const;
+
   bool operator<(const CroppedImage &other) const;
 
 private:
-  float quality_score;
+  double quality_score;
 
-  float get_contrast();
-  float get_sharpness();
-  float get_snr();
+  [[nodiscard]] double get_contrast() const;
+
+  [[nodiscard]] double get_sharpness() const;
+
+  [[nodiscard]] double get_snr() const;
 };
 
 #endif

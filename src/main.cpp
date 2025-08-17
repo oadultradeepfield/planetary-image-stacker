@@ -10,10 +10,10 @@
 
 namespace fs = std::filesystem;
 
-int main(int argc, char *argv[]) {
+int main(const int argc, char *argv[]) {
   if (argc < 3) {
     std::cerr << "Usage: " << argv[0]
-              << " <video_path> <crop_size> [frame_skip]\n";
+        << " <video_path> <crop_size> [frame_skip]\n";
     return 1;
   }
 
@@ -22,8 +22,8 @@ int main(int argc, char *argv[]) {
   int frame_skip = (argc > 3) ? std::stoi(argv[3]) : 1;
 
   std::cout << "Processing video: " << video_path
-            << "\nCrop size: " << crop_size << "\nFrame skip: " << frame_skip
-            << std::endl;
+      << "\nCrop size: " << crop_size << "\nFrame skip: " << frame_skip
+      << std::endl;
 
   // Prepare output directory
   fs::path input_path(video_path);
@@ -60,8 +60,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "Successfully saved stacked image to: " << output_path
-              << std::endl;
-
+        << std::endl;
   } catch (const std::exception &e) {
     std::cerr << "Exception: " << e.what() << std::endl;
     return 1;

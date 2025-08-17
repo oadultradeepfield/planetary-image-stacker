@@ -12,7 +12,7 @@
 namespace fs = std::filesystem;
 
 bool create_output_directory(const std::string &output_path) {
-  fs::path dir = fs::path(output_path).parent_path();
+  const fs::path dir = fs::path(output_path).parent_path();
   try {
     fs::create_directories(dir);
     return true;
@@ -45,7 +45,7 @@ bool process_image_set(const std::string &input_dir,
       cropped_images.push_back(cropped_img);
     } catch (const std::exception &e) {
       std::cerr << "  Error processing " << filename << ": " << e.what()
-                << std::endl;
+          << std::endl;
       return false;
     }
   }
@@ -57,10 +57,9 @@ bool process_image_set(const std::string &input_dir,
 
   // Stack images
   std::cout << "  Stacking images..." << std::endl;
-  cv::Mat final_image = ImageStacker::stack_images(aligned_images);
 
   // Save the final result
-  if (!cv::imwrite(output_path, final_image)) {
+  if (cv::Mat final_image = ImageStacker::stack_images(aligned_images); !cv::imwrite(output_path, final_image)) {
     std::cerr << "  Error saving image to: " << output_path << std::endl;
     return false;
   }
@@ -70,16 +69,21 @@ bool process_image_set(const std::string &input_dir,
 }
 
 int main() {
-  const std::vector<std::pair<std::string, std::string>> test_cases = {
-      {"../test/input/jupiter_sample_frames/",
-       "../test/output/jupiter_output.png"},
-      {"../test/input/saturn_sample_frames/",
-       "../test/output/saturn_output.png"},
-      {"../test/input/moon_sample_frames/", "../test/output/moon_output.png"}};
+  const std::vector<std::pair<std::string, std::string> > test_cases = {
+    {
+      "../test/input/jupiter_sample_frames/",
+      "../test/output/jupiter_output.png"
+    },
+    {
+      "../test/input/saturn_sample_frames/",
+      "../test/output/saturn_output.png"
+    },
+    {"../test/input/moon_sample_frames/", "../test/output/moon_output.png"}
+  };
 
   int successful_tests = 0;
 
-  for (const auto &[input_dir, output_path] : test_cases) {
+  for (const auto &[input_dir, output_path]: test_cases) {
     if (process_image_set(input_dir, output_path)) {
       successful_tests++;
     } else {
@@ -89,7 +93,7 @@ int main() {
   }
 
   std::cout << "Completed " << successful_tests << "/" << test_cases.size()
-            << " test cases successfully." << std::endl;
+      << " test cases successfully." << std::endl;
 
   return (successful_tests == test_cases.size()) ? 0 : 1;
 }
